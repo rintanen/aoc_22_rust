@@ -49,7 +49,7 @@ fn study_tree(row: usize, col: usize, grid: &Grid) -> (bool, u32) {
         if grid.loc(row, c) >= tree {
             break;
         }
-        if c == grid.shape.1 {
+        if c == grid.shape.1 - 1 {
             visible = true;
         }
     }
@@ -71,7 +71,7 @@ fn study_tree(row: usize, col: usize, grid: &Grid) -> (bool, u32) {
         if grid.loc(r, col) >= tree {
             break;
         }
-        if r == grid.shape.1 {
+        if r == grid.shape.1 - 1 {
             visible = true;
         }
     }
@@ -96,7 +96,6 @@ fn main() {
             let (visible, scenic_score) = study_tree(r, c, &grid);
 
             if visible {
-                println!("({}, {})", r, c);
                 visible_trees += 1;
             }
 
@@ -106,8 +105,6 @@ fn main() {
 
         }
     }
-    println!("visible = {}", visible_trees + 2 * grid.shape.0 + 2 * grid.shape.1 - 4);
-    println!("highest scenic score = {}", highest_scenic_score);
-    // tätä ei löydy miksi?
-    println!("{:?}", study_tree(2, 3, &grid));
+    println!("visible trees: {}", visible_trees + 2 * grid.shape.0 + 2 * grid.shape.1 - 4);
+    println!("highest scenic score: {}", highest_scenic_score);
 }
