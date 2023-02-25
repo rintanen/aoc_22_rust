@@ -1,6 +1,9 @@
+use std::collections::HashSet;
 
-fn simulate_rope(instructions: &Vec<(&str, u8)>, n: usize) {
+fn simulate_rope(instructions: &Vec<(&str, u8)>, n: usize) -> usize {
     let mut nodes = vec![(0, 0); n];
+    let mut visited = HashSet::new();
+
     for (direction, amount) in instructions {
         let delta = {
             match *direction {
@@ -11,17 +14,29 @@ fn simulate_rope(instructions: &Vec<(&str, u8)>, n: usize) {
                 _ => (0, 0)
             }
         };
-        println!("{:?}", delta);
 
         for _ in 0..*amount {
             nodes[0].0 += delta.0;
-            nodes[1].1 += delta.1;
+            nodes[0].1 += delta.1;
 
-            for i in 1..nodes.len() {
+            for i in 1..n {
+                let dx: i32 = nodes[i-1].0 - nodes[i].0;
+                let dy: i32 = nodes[i-1].1 - nodes[i].1;
+
+                if dx.abs() > 1 || dy.abs() > 1 {
+                    if dx.abs() >= 1 {
+                        nodes[i].0 += (dx / dx.abs()) as i32 
+                    }
+                    if dy.abs() >= 1 {
+                        nodes[i].1 += (dy / dy.abs()) as i32
+                    }
+                }
 
             }
+            visited.insert(nodes.last().cloned());
         }
     }
+    visited.len()
 }
 
 
@@ -35,5 +50,6 @@ fn main() {
         })
         .collect::<Vec<(&str, u8)>>();
 
-    simulate_rope(&instructions, 2);
+    println!("PT1: {}", simulate_rope(&instructions, 2));
+    println!("PT2: {}", simulate_rope(&instructions, 10));
 }
