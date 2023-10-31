@@ -4,10 +4,22 @@ use std::collections::{VecDeque, HashSet};
 use std::hash::{Hash, Hasher};
 
 
-fn in_bounds(loc: &Loc, delta: (i8, i8)) -> bool {
-    loc.row as i8 - delta.0 >= 0 && loc.col as i8 - delta.1 >= 0 
+fn is_positive_index(loc: &Loc, delta: (isize, isize)) -> bool {
+    loc.row as isize - delta.0 >= 0 && loc.col as isize - delta.1 >= 0
 }
 
+
+// fn walkable(neighbour: Vec<Loc>, grid: &Grid) -> Vec<Loc> {
+//     let mut walkable_nbs = vec![];
+//     for neighbour in neighbours {
+//         let nb_height = grid.loc(&neighbour);
+//         let node_height = grid.loc(&node);
+//         if grid.loc(&neighbour) <= grid.loc(&node) {
+//             walkable_nbs.push(neighbour.clone());
+//         }
+//     }
+//     walkable_nbs
+// }
 
 #[derive(Eq, PartialEq, Clone)]
 struct Loc {
@@ -18,10 +30,11 @@ struct Loc {
 impl Loc {
     fn neighbours(&self) -> Vec<Loc> {
         let mut nbs = vec![];
-        for delta in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
-            if in_bounds(&self, delta) {
-                let row = self.row as i8 - delta.0;
-                let col = self.col as i8 - delta.1;
+        let deltas: [(isize, isize); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+        for delta in deltas {
+            if is_positive_index(&self, delta) {
+                let row = self.row as isize - delta.0;
+                let col = self.col as isize - delta.1;
                 nbs.push(Loc{row: row as usize, col: col as usize})
             }
         }
@@ -56,24 +69,22 @@ impl<'a> Grid<'a> {
     fn new(arr: &'a [u8]) -> Grid {
         let cols = arr.iter().position(|&b| b == 10).unwrap();
         let rows = arr.len() / cols;
-        Grid { array: arr, shape: (rows as usize, cols )}
+        Grid { array: arr, shape: (rows, cols )}
     }
 
     fn loc(&self, location: &Loc) -> Option<&'a u8> {
-        let index_1d = location.col + self.shape.1 * location.row;
+        let index_1d = location.col + self.shape.1 * location.row + location.row;
         // add row's index to the 2d->1d grid mapping index 
         // because there is newline character between each row
-        // NOTE: don't need to check that row and col are >= 0, because usize is always positive
-        if location.row <= self.shape.0 && location.col <= self.shape.1 {
-            let res = Some(&self.array[index_1d + location.row]);
+        if index_1d < self.array.len() {
+            let res = Some(&self.array[index_1d]);
             // exception for start and end location
-            if res == Some(&83) {
-                return Some(&97);
-            } else if res == Some(&69) {
-                return Some(&122);
+            if res == Some(&b'S') {
+                return Some(&b'a');
+            } else if res == Some(&b'E') {
+                return Some(&b'z');
             }
             res
-
         } else {
             None
         }
@@ -92,26 +103,28 @@ impl<'a> Grid<'a> {
 }
 
 
-fn breadth_first(grid: Grid, start: Loc, dest:Loc) -> Option<Vec<Loc>>{
+fn breadth_first_search(grid: Grid, start: Loc, dest:Loc) -> Option<Vec<Loc>>{
     let mut explored: HashSet<Loc> = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back(vec![start]);
 
     while let Some(path) = queue.pop_front() {
         let node = path.last().cloned().unwrap();
-        
-        if node == dest {
-            return Some(path)
-        }
 
         if !explored.contains(&node) {
-            // let neighbours = node.neighbours();
-            for neighbour in node.neighbours() {
+            let neighbours = node.neighbours().iter()
+                    .filter(|nb| grid.loc(nb).is_some())
+                    .cloned()
+                    .collect::<Vec<Loc>>();
+            for neighbour in neighbours {
                 println!("{}", neighbour);
                 if grid.loc(&neighbour) <= grid.loc(&node) {
                     let mut new_path = path.clone();
                     new_path.push(neighbour.clone());
                     queue.push_back(new_path.clone());
+                    if neighbour == dest {
+                        return Some(new_path);
+                    }
                 }
             }
             explored.insert(node);
@@ -126,10 +139,15 @@ fn main() {
     let raw_input: String = fs::read_to_string("inputs/day12.in").unwrap();
     println!("{:?}", raw_input);
     let grid = Grid::new(raw_input.as_bytes());
-    let start_loc = grid.find('S' as u8).unwrap();
-    let end_loc = grid.find('E' as u8).unwrap();
+    let start_loc = grid.find(b'S').unwrap();
+    let end_loc = grid.find(b'E').unwrap();
 
-    let path = breadth_first(grid, start_loc, end_loc).unwrap();
+    if let Some(path) = breadth_first_search(grid, start_loc, end_loc) {
+        println!("found path");
+        path.iter().for_each(|loc| println!("{}", loc));
+    }
+    else {
+        println!("no path found");
+    }
 
-    path.iter().for_each(|loc| println!("{}", loc));
 }
