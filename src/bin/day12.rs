@@ -122,25 +122,27 @@ fn breadth_first_search(grid: Grid, start: Loc, dest:u8, reverse: bool) -> Optio
     None
 }
 
+fn check_result(path: Option<Vec<Loc>>) {
+    match path {
+        Some(p) => {
+            println!("Found path");
+            println!("Steps: {}", p.len() - 1);
+        },
+        None => println!("No path found")
+    }
+}
+
 fn main() {
     let raw_input: String = fs::read_to_string("inputs/day12_asd.in").unwrap();
     let grid = Grid::new(raw_input.as_bytes());
+
+    println!("Part 1");
     let start_loc = grid.find(b'S').unwrap();
+    let res = breadth_first_search(grid.clone(), start_loc, b'E', false);
+    check_result(res);
 
-    if let Some(path) = breadth_first_search(grid.clone(), start_loc, b'E', false) {
-        println!("PT1 found path");
-        println!("Steps: {}", path.len() - 1);
-    }
-    else {
-        println!("PT1 no path found");
-    }
-
+    println!("Part 2");
     let start_loc = grid.find(b'E').unwrap();
-    if let Some(path) = breadth_first_search(grid, start_loc, b'a', true) {
-        println!("PT2 found path");
-        println!("Steps: {}", path.len() - 1);
-    }
-    else {
-        println!("PT2 no path found");
-    }
+    let res = breadth_first_search(grid.clone(), start_loc, b'a', true);
+    check_result(res);
 }
