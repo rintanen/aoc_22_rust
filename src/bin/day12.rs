@@ -1,7 +1,7 @@
 use std::fs;
 use std::fmt;
 use std::collections::{VecDeque, HashSet};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 
 fn is_positive_index(loc: &Loc, delta: (isize, isize)) -> bool {
@@ -9,28 +9,17 @@ fn is_positive_index(loc: &Loc, delta: (isize, isize)) -> bool {
 }
 
 
-// fn walkable(neighbour: Vec<Loc>, grid: &Grid) -> Vec<Loc> {
-//     let mut walkable_nbs = vec![];
-//     for neighbour in neighbours {
-//         let nb_height = grid.loc(&neighbour);
-//         let node_height = grid.loc(&node);
-//         if grid.loc(&neighbour) <= grid.loc(&node) {
-//             walkable_nbs.push(neighbour.clone());
-//         }
-//     }
-//     walkable_nbs
-// }
-
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Hash)]
 struct Loc {
     row: usize,
     col: usize
 }
 
+
 impl Loc {
-    fn neighbours(&self) -> Vec<Loc> {
+    fn adjacent(&self) -> Vec<Loc> {
         let mut nbs = vec![];
-        let deltas: [(isize, isize); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+        let deltas: [(isize, isize); 4] = [(1, 0), (0, -1), (-1, 0), (0, 1)];
         for delta in deltas {
             if is_positive_index(&self, delta) {
                 let row = self.row as isize - delta.0;
@@ -42,15 +31,6 @@ impl Loc {
     }
 }
 
-impl Hash for Loc {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // Implement a custom hashing logic for Loc
-        // You should hash the fields that uniquely identify a Loc instance.
-        // For example, if Loc has an (x, y) coordinate, you can hash them like this:
-        self.col.hash(state);
-        self.row.hash(state);
-    }
-}
 
 impl fmt::Display for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -59,11 +39,12 @@ impl fmt::Display for Loc {
 }
 
 
-
+#[derive(Clone)]
 struct Grid<'a> {
     array: &'a [u8],
     shape: (usize, usize)
 }
+
 
 impl<'a> Grid<'a> {
     fn new(arr: &'a [u8]) -> Grid {
@@ -103,28 +84,36 @@ impl<'a> Grid<'a> {
 }
 
 
-fn breadth_first_search(grid: Grid, start: Loc, dest:Loc) -> Option<Vec<Loc>>{
-    let mut explored: HashSet<Loc> = HashSet::new();
-    let mut queue = VecDeque::new();
-    queue.push_back(vec![start]);
+fn get_neighbours(grid: &Grid, node: &Loc, reverse: bool) -> Vec<Loc> {
+    let node_height = grid.loc(&node).unwrap();
+    let neighbours = node.adjacent().iter()
+        .filter(|nb| {
+            let Some(nb_height) = grid.loc(nb) else { return false };
+            if reverse == false {
+                nb_height.wrapping_sub(*node_height) <= 1
+            } else {
+                node_height.wrapping_sub(*nb_height) <= 1
+            }
+        })
+        .cloned()
+        .collect::<Vec<Loc>>();
+    neighbours
+}
 
+fn breadth_first_search(grid: Grid, start: Loc, dest:u8, reverse: bool) -> Option<Vec<Loc>>{
+    let mut explored: HashSet<Loc> = HashSet::new();
+    let mut queue: VecDeque<Vec<Loc>> = VecDeque::new();
+    queue.push_back(vec![start]);
     while let Some(path) = queue.pop_front() {
         let node = path.last().cloned().unwrap();
-
         if !explored.contains(&node) {
-            let neighbours = node.neighbours().iter()
-                    .filter(|nb| grid.loc(nb).is_some())
-                    .cloned()
-                    .collect::<Vec<Loc>>();
+            let neighbours = get_neighbours(&grid, &node, reverse);
             for neighbour in neighbours {
-                println!("{}", neighbour);
-                if grid.loc(&neighbour) <= grid.loc(&node) {
-                    let mut new_path = path.clone();
-                    new_path.push(neighbour.clone());
-                    queue.push_back(new_path.clone());
-                    if neighbour == dest {
-                        return Some(new_path);
-                    }
+                let mut new_path = path.clone();
+                new_path.push(neighbour.clone());
+                queue.push_back(new_path.clone());
+                if *grid.loc(&neighbour).unwrap() == dest {
+                    return Some(new_path);
                 }
             }
             explored.insert(node);
@@ -133,21 +122,25 @@ fn breadth_first_search(grid: Grid, start: Loc, dest:Loc) -> Option<Vec<Loc>>{
     None
 }
 
-
-
 fn main() {
-    let raw_input: String = fs::read_to_string("inputs/day12.in").unwrap();
-    println!("{:?}", raw_input);
+    let raw_input: String = fs::read_to_string("inputs/day12_asd.in").unwrap();
     let grid = Grid::new(raw_input.as_bytes());
     let start_loc = grid.find(b'S').unwrap();
-    let end_loc = grid.find(b'E').unwrap();
 
-    if let Some(path) = breadth_first_search(grid, start_loc, end_loc) {
-        println!("found path");
-        path.iter().for_each(|loc| println!("{}", loc));
+    if let Some(path) = breadth_first_search(grid.clone(), start_loc, b'E', false) {
+        println!("PT1 found path");
+        println!("Steps: {}", path.len() - 1);
     }
     else {
-        println!("no path found");
+        println!("PT1 no path found");
     }
 
+    let start_loc = grid.find(b'E').unwrap();
+    if let Some(path) = breadth_first_search(grid, start_loc, b'a', true) {
+        println!("PT2 found path");
+        println!("Steps: {}", path.len() - 1);
+    }
+    else {
+        println!("PT2 no path found");
+    }
 }
