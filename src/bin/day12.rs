@@ -53,17 +53,19 @@ impl<'a> Grid<'a> {
         Grid { array: arr, shape: (rows, cols )}
     }
 
-    fn loc(&self, location: &Loc) -> Option<&'a u8> {
+    fn loc(&self, location: &Loc, verify: bool) -> Option<&'a u8> {
         let index_1d = location.col + self.shape.1 * location.row + location.row;
         // add row's index to the 2d->1d grid mapping index 
         // because there is newline character between each row
         if index_1d < self.array.len() {
             let res = Some(&self.array[index_1d]);
             // exception for start and end location
-            if res == Some(&b'S') {
-                return Some(&b'a');
-            } else if res == Some(&b'E') {
-                return Some(&b'z');
+            if !verify {
+                if res == Some(&b'S') {
+                    return Some(&b'a');
+                } else if res == Some(&b'E') {
+                    return Some(&b'z');
+                }
             }
             res
         } else {
@@ -85,10 +87,10 @@ impl<'a> Grid<'a> {
 
 
 fn get_neighbours(grid: &Grid, node: &Loc, reverse: bool) -> Vec<Loc> {
-    let node_height = grid.loc(&node).unwrap();
+    let node_height = grid.loc(&node, false).unwrap();
     let neighbours = node.adjacent().iter()
         .filter(|nb| {
-            let Some(nb_height) = grid.loc(nb) else { return false };
+            let Some(nb_height) = grid.loc(nb, false) else { return false };
             if reverse == false {
                 nb_height.wrapping_sub(*node_height) <= 1
             } else {
@@ -112,7 +114,7 @@ fn breadth_first_search(grid: Grid, start: Loc, dest:u8, reverse: bool) -> Optio
                 let mut new_path = path.clone();
                 new_path.push(neighbour.clone());
                 queue.push_back(new_path.clone());
-                if *grid.loc(&neighbour).unwrap() == dest {
+                if *grid.loc(&neighbour, true).unwrap() == dest {
                     return Some(new_path);
                 }
             }
@@ -123,7 +125,7 @@ fn breadth_first_search(grid: Grid, start: Loc, dest:u8, reverse: bool) -> Optio
 }
 
 fn main() {
-    let raw_input: String = fs::read_to_string("inputs/day12_asd.in").unwrap();
+    let raw_input: String = fs::read_to_string("inputs/day12.in").unwrap();
     let grid = Grid::new(raw_input.as_bytes());
     let start_loc = grid.find(b'S').unwrap();
 
