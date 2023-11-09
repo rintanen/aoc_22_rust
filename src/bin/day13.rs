@@ -72,7 +72,7 @@ impl Ord for Packet {
     }
 }
 
-fn pairs_in_correct_order(pairs: &[Pair]) -> Vec<usize> {
+fn pt1_pairs_in_correct_order(pairs: &[Pair]) -> Vec<usize> {
     pairs
         .iter()
         .enumerate()
@@ -86,7 +86,7 @@ fn pairs_in_correct_order(pairs: &[Pair]) -> Vec<usize> {
         .collect::<Vec<usize>>()
 }
 
-fn all_packets(pairs: &[Pair]) -> Vec<&Packet> {
+fn pt2_all_packets(pairs: &[Pair]) -> Vec<&Packet> {
     let packets: Vec<&Packet> = pairs
         .iter()
         .flat_map(|Pair { left, right }| [left, right])
@@ -94,7 +94,7 @@ fn all_packets(pairs: &[Pair]) -> Vec<&Packet> {
     packets
 }
 
-fn find_decoder_key(packets: Vec<&Packet>) -> usize {
+fn pt2_calculate_decoder_key(packets: Vec<&Packet>) -> usize {
     let divider_packet_2 = Packet::List(vec![Packet::Number(2)]);
     let divider_packet_6 = Packet::List(vec![Packet::Number(6)]);
     let divider_packet_2_index = packets
@@ -117,18 +117,18 @@ fn main() {
     let (_, pairs) = parse_pairs(input).unwrap();
 
     // pt1
-    let in_correct_order = pairs_in_correct_order(&pairs);
+    let in_correct_order = pt1_pairs_in_correct_order(&pairs);
     let sum_of_indices = in_correct_order.iter().sum::<usize>();
     println!("PT1:\nsum of indices: {sum_of_indices}");
 
     // pt2
-    let mut all_packets = all_packets(&pairs);
+    let mut all_packets = pt2_all_packets(&pairs);
     let divider_packet_2 = Packet::List(vec![Packet::Number(2)]);
     let divider_packet_6 = Packet::List(vec![Packet::Number(6)]);
     all_packets.push(&divider_packet_2);
     all_packets.push(&divider_packet_6);
     all_packets.sort();
 
-    let decoder_key = find_decoder_key(all_packets);
+    let decoder_key = pt2_calculate_decoder_key(all_packets);
     println!("PT2:\ndecoder key: {decoder_key}")
 }
