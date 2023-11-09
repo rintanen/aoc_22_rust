@@ -94,9 +94,21 @@ fn all_packets(pairs: &[Pair]) -> Vec<&Packet> {
     packets
 }
 
-fn add_divider_packets(packets: &mut Vec<&Packet>){
-    packets.push(&Packet::List(vec![Packet::Number(2)]));
-    packets.push(&Packet::List(vec![Packet::Number(6)]));
+fn find_decoder_key(packets: Vec<&Packet>) -> usize {
+    let divider_packet_2 = Packet::List(vec![Packet::Number(2)]);
+    let divider_packet_6 = Packet::List(vec![Packet::Number(6)]);
+    let divider_packet_2_index = packets
+        .iter()
+        .position(|packet| packet == &&divider_packet_2);
+
+    let divider_packet_6_index = packets
+        .iter()
+        .position(|packet| packet == &&divider_packet_6);
+
+    match (divider_packet_2_index, divider_packet_6_index) {
+        (Some(pos1), Some(pos2)) => (pos1 + 1) * (pos2 + 1),
+        _ => panic!("divider packets not found"),
+    }
 }
 
 
@@ -107,12 +119,17 @@ fn main() {
     // pt1
     let in_correct_order = pairs_in_correct_order(&pairs);
     let sum_of_indices = in_correct_order.iter().sum::<usize>();
-    println!("PT1:\npairs in correct order: {in_correct_order:?}\n \
+    println!("PT1:\npairs in correct order: {in_correct_order:?}\n\
              sum of indices: {sum_of_indices}");
 
     // pt2
     let mut all_packets = all_packets(&pairs);
-    add_divider_packets(&mut all_packets);
+    let divider_packet_2 = Packet::List(vec![Packet::Number(2)]);
+    let divider_packet_6 = Packet::List(vec![Packet::Number(6)]);
+    all_packets.push(&divider_packet_2);
+    all_packets.push(&divider_packet_6);
     all_packets.sort();
 
+    let decoder_key = find_decoder_key(all_packets);
+    println!("PT2:\ndecoder key: {decoder_key}")
 }
