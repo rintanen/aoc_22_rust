@@ -79,19 +79,26 @@ fn pairs_in_correct_order(pairs: &[Pair]) -> Vec<usize> {
         .filter_map(|(i, Pair { left, right })| {
             match left.cmp(right)
             {
-                Less | Equal => Some(i),
+                Less | Equal => Some(i + 1),
                 Greater => None,
             }
         })
         .collect::<Vec<usize>>()
 }
 
-fn sum_of_indices(indices: &[usize]) -> usize {
-    indices
+fn all_packets(pairs: &[Pair]) -> Vec<&Packet> {
+    let mut packets: Vec<&Packet> = pairs
         .iter()
-        .map(|i| i + 1)
-        .sum::<usize>()
+        .flat_map(|Pair { left, right }| [left, right])
+        .collect();
+    packets
 }
+
+fn add_divider_packets(packets: &mut Vec<&Packet>){
+    packets.push(&Packet::List(vec![Packet::Number(2)]));
+    packets.push(&Packet::List(vec![Packet::Number(6)]));
+}
+
 
 fn main() {
     let input = include_str!("../../inputs/day13.in");
@@ -99,8 +106,13 @@ fn main() {
 
     // pt1
     let in_correct_order = pairs_in_correct_order(&pairs);
-    let sum = sum_of_indices(&in_correct_order);
+    let sum_of_indices = in_correct_order.iter().sum::<usize>();
     println!("PT1:\npairs in correct order: {in_correct_order:?}\n \
-             sum of indices: {sum}");
+             sum of indices: {sum_of_indices}");
+
+    // pt2
+    let mut all_packets = all_packets(&pairs);
+    add_divider_packets(&mut all_packets);
+    all_packets.sort();
 
 }
