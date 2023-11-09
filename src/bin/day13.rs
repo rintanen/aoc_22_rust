@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, newline},
+    character::complete::newline,
     multi::{separated_list0, separated_list1},
     sequence::{delimited, separated_pair},
     *,
@@ -87,7 +87,7 @@ fn pairs_in_correct_order(pairs: &[Pair]) -> Vec<usize> {
 }
 
 fn all_packets(pairs: &[Pair]) -> Vec<&Packet> {
-    let mut packets: Vec<&Packet> = pairs
+    let packets: Vec<&Packet> = pairs
         .iter()
         .flat_map(|Pair { left, right }| [left, right])
         .collect();
@@ -119,8 +119,7 @@ fn main() {
     // pt1
     let in_correct_order = pairs_in_correct_order(&pairs);
     let sum_of_indices = in_correct_order.iter().sum::<usize>();
-    println!("PT1:\npairs in correct order: {in_correct_order:?}\n\
-             sum of indices: {sum_of_indices}");
+    println!("PT1:\nsum of indices: {sum_of_indices}");
 
     // pt2
     let mut all_packets = all_packets(&pairs);
