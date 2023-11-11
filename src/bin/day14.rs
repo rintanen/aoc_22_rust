@@ -54,12 +54,35 @@ struct SandDropSimulation {
 
 
 impl SandDropSimulation {
-    fn forward(&self) {
-
+    fn forward(&mut self) {
+        self.sand_drop((500, 0));
     }
 
-    fn sand_drop(&self) -> bool {
-        true
+    fn sand_drop(&mut self, sand_location: (u32, u32)) {
+        let (x, y) = sand_location;
+        let below = self.grid.arr.get(&(x, y - 1));
+        let below_left = self.grid.arr.get(&(x - 1, y - 1));
+        let below_right = self.grid.arr.get(&(x + 1, y - 1));
+
+        match (below, below_left, below_right) {
+            (Some(_), Some(_), Some(_)) => {
+                // comes to rest drop new sand
+                self.grid.arr.insert((x, y));
+                self.sand_drop((500, 0))
+            }
+            (None, _, _) => {
+                // free fall
+                self.sand_drop((x, y - 1))
+            }
+            (Some(_), None, _) => {
+                // spread left
+                self.sand_drop((x - 1, y - 1))
+            }
+            (Some(_), Some(_), None) => {
+                // spread right
+                self.sand_drop((x + 1, y - 1))
+            }
+        }
     }
 }
 
@@ -69,6 +92,7 @@ fn main() {
     let input = include_str!("../../inputs/day14.in");
     let (_, mut grid) = parse_initial_grid(input).unwrap();
 
+    let number_of_stones = grid.arr.len();
     let mut simulation = SandDropSimulation { grid };
 
 }
