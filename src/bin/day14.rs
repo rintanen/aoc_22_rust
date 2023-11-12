@@ -129,16 +129,14 @@ fn main() {
     pt_1_simulation.execute();
 
 
-    // let mut pt_2_simulation = SandDropSimulation {
-    //     grid: grid,
-    //     sand_drop_stop_condition: |y, _, initial_sand_level| {
-    //         y == initial_sand_level
-    //     },
-    //
-    // };
-    //
-    // pt_2_simulation.sand_drop();
-    // let pt2_units_sands_dropped = grid.arr.len() - number_of_stones;
-    // println!("pt2: {}", pt2_units_sands_dropped)
+    let mut pt_2_simulation = SandDropSimulation {
+        grid,
+        sand_drop_stop_condition: |y, _, initial_sand_level| {
+            y == initial_sand_level
+        },
+
+    };
+    println!("PT2: ");
+    pt_2_simulation.execute();
 
 }
