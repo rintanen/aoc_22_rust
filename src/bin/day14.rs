@@ -68,8 +68,10 @@ impl SandDropSimulation {
             Part::PT2 => self.pt2_sand_drop(),
         }
         let units_sands_dropped = self.grid.arr.len() - number_of_stones;
-        println!("{:?}: {} units of sand dropped before condition is met",
-                 self.part, units_sands_dropped);
+        println!(
+            "{:?}: {} units of sand dropped before condition is met",
+            self.part, units_sands_dropped
+        );
     }
 
     fn pt1_sand_drop(&mut self) {
