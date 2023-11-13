@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 
 use itertools::Itertools;
 use nom::{
@@ -34,40 +34,44 @@ fn one_line(input: &str) -> IResult<&str, impl Iterator<Item = (u32, u32)>> {
 
 fn parse_initial_grid(input: &str) -> IResult<&str, Grid> {
     let (input, rocks_from_all_lines) = separated_list1(newline, one_line)(input)?;
-    let rocks: BTreeSet<(u32, u32)> = rocks_from_all_lines.into_iter().flatten().collect();
-    let floor_level = rocks.iter().map(|(_, y)| y).max().cloned().unwrap();
-    let grid = Grid { arr: rocks, floor_level };
+    let rocks: HashSet<(u32, u32)> = rocks_from_all_lines.into_iter().flatten().collect();
+    let lowest_rocks = rocks.iter().map(|(_, y)| y).max().cloned().unwrap();
+    let grid = Grid { arr: rocks, lowest_rocks };
     Ok((input, grid))
 }
 
 #[derive(Debug, Clone)]
 struct Grid {
-    arr: BTreeSet<(u32, u32)>,
-    floor_level: u32,
+    arr: HashSet<(u32, u32)>,
+    lowest_rocks: u32,
 }
 
 impl Grid {
 }
 
+#[derive(Debug)]
 enum Part {
-    PT1(fn(u32, u32) -> bool),
-    PT2(fn(u32, u32) -> bool),
+    PT1,
+    PT2,
 }
 
 struct SandDropSimulation {
     grid: Grid,
-    part: Part,
+    part: Part
 }
 
 impl SandDropSimulation {
     fn execute(&mut self) {
         let number_of_stones = self.grid.arr.len();
-        self.sand_drop();
+        match self.part {
+            Part::PT1 => self.pt1_sand_drop(),
+            Part::PT2 => self.pt2_sand_drop(),
+        }
         let units_sands_dropped = self.grid.arr.len() - number_of_stones;
-        println!("{}", units_sands_dropped);
+        println!("{:?}: {}", self.part, units_sands_dropped);
     }
 
-    fn sand_drop(&mut self) {
+    fn pt1_sand_drop(&mut self) {
         let mut sand_location = (500, 0);
         loop {
             let (x, y) = sand_location;
@@ -76,14 +80,8 @@ impl SandDropSimulation {
             let below_left = (x - 1, y + 1);
             let below_right = (x + 1, y + 1);
 
-
-            match &self.part {
-                Part::PT1(sand_drop_stop_condition) => {
-                    if (sand_drop_stop_condition)(y, self.grid.floor_level){
-                        return;
-                    }
-                }
-                _ => {}
+            if y > self.grid.lowest_rocks {
+                return;
             }
 
             match (self.grid.arr.get(&below),
@@ -91,17 +89,8 @@ impl SandDropSimulation {
                    self.grid.arr.get(&below_right)) {
                 (Some(_), Some(_), Some(_)) => {
                     // comes to rest drop new sand at origin (500, 0)
-                    match &self.part {
-                        Part::PT2(sand_drop_stop_condition) => {
-                            if (sand_drop_stop_condition)(x, y){
-                                return;
-                            }
-                        }
-                        _ => {}
-                    }
                     self.grid.arr.insert((x, y));
                     sand_location = (500, 0);
-
                 }
                 (None, _, _) => {
                     // free fall
@@ -118,7 +107,51 @@ impl SandDropSimulation {
             }
         }
     }
+
+    fn pt2_sand_drop(&mut self) {
+        let mut sand_location = (500, 0);
+        let floor_level = self.grid.lowest_rocks + 2;
+
+        while let None = self.grid.arr.get(&(500, 0)) {
+            let (x, y) = sand_location;
+
+            let below = (x, y + 1);
+            let below_left = (x - 1, y + 1);
+            let below_right = (x + 1, y + 1);
+
+            if below.1 == floor_level {
+                self.grid.arr.insert(below);
+                self.grid.arr.insert(below_left);
+                self.grid.arr.insert(below_right);
+            }
+
+            match (self.grid.arr.get(&below),
+                   self.grid.arr.get(&below_left),
+                   self.grid.arr.get(&below_right)) {
+                (Some(_), Some(_), Some(_)) => {
+                    // comes to rest drop new sand at origin (500, 0)
+                    self.grid.arr.insert((x, y));
+                    sand_location = (500, 0);
+                }
+                (None, _, _) => {
+                    // free fall
+                    sand_location = below;
+                }
+                (Some(_), None, _) => {
+                    // spread left
+                    sand_location = below_left;
+                }
+                (Some(_), Some(_), None) => {
+                    // spread right
+                    sand_location = below_right;
+                }
+            }
+        }
+        // remove floor level from arr, because of the way we calculate sands in execute()
+        self.grid.arr.retain(|(_, y)| y != &floor_level);
+    }
 }
+
 
 fn main() {
     let input = include_str!("../../inputs/day14.in");
@@ -127,20 +160,14 @@ fn main() {
     // pt1
     let mut pt_1_simulation = SandDropSimulation {
         grid: grid.clone(),
-        part: Part::PT1(|y, floor_level| {
-            y > floor_level
-        }),
+        part: Part::PT1
     };
-    println!("PT1: ");
     pt_1_simulation.execute();
 
     // pt2
     let mut pt_2_simulation = SandDropSimulation {
-        grid,
-        part: Part::PT2(|x, y| {
-            x == 500 && y == 0
-        }),
+        grid: grid.clone(),
+        part: Part::PT2
     };
-    println!("PT2: ");
     pt_2_simulation.execute();
 }
