@@ -1,3 +1,4 @@
+use itertools::Itertools;
 
 #[derive(Debug)]
 enum Tetromino {
@@ -13,7 +14,7 @@ impl Tetromino {
     fn move_by_jet_stream(&mut self, jet_stream: i32) {
         match self {
             Tetromino::Hyphen((x, _)) => *x = (*x + jet_stream).max(0).min(3),
-            Tetromino::Plus((x, _)) => *x = (*x + jet_stream).max(2).min(5),
+            Tetromino::Plus((x, _)) => *x = (*x + jet_stream).max(1).min(5),
             Tetromino::RightAngle((x, _)) => *x = (*x + jet_stream).max(0).min(4),
             Tetromino::Pipe((x, _)) => *x = (*x + jet_stream).max(0).min(6),
             Tetromino::Square((x, _)) => *x = (*x + jet_stream).max(0).min(5),
@@ -30,42 +31,51 @@ impl Tetromino {
         }
     }
 
-    fn collision_check(&self, contact_level: &Vec<i32>) -> Some(i32) {
+    fn collision_check(&self, contact_level: &Vec<i32>) -> bool {
         match self {
             Tetromino::Hyphen((x, y)) => {
-                let points_of_impact = vec![(*x, y-1), (*x-1, y), (*x+1, y)];
+                let points_of_impact = vec![(*x, y-1), (*x+1, y-1), (*x+2, y-1), (*x+3, y-1)];
                 check_collision(&points_of_impact, contact_level)
-
             },
             Tetromino::Plus((x, y)) => {
-                let points_of_impact = vec![(*x, y-1), (*x-1, y), (*x+1, y)];
+                let points_of_impact = vec![(*x, y-1), (*x-1, *y), (*x+1, *y)];
                 check_collision(&points_of_impact, contact_level)
             },
-            Tetromino::RightAngle((x, y)) =>
-                {
-                    let points_of_impact = vec![(*x, y-1), (*x+1, y-1), (*x+2, y-1)];
-                    check_collision(&points_of_impact, contact_level)
-
-                },
+            Tetromino::RightAngle((x, y)) => {
+                let points_of_impact = vec![(*x, *y-1), (*x+1, *y-1), (*x+2, *y-1)];
+                check_collision(&points_of_impact, contact_level)
+            },
             Tetromino::Pipe((x, y)) => {
-                let points_of_impact = vec![(*x, y-1)];
+                let points_of_impact = vec![(*x, *y-1)];
                 check_collision(&points_of_impact, contact_level)
             }
             Tetromino::Square((x, y)) => {
-                let points_of_impact = vec![(*x, y-1), (*x+1, y-1)];
+                let points_of_impact = vec![(*x, *y-1), (*x+1, *y-1)];
                 check_collision(&points_of_impact, contact_level)
             }
+        }
+    }
+
+    fn new_points_of_contact(&self) -> Vec<(i32, i32)> {
+        // update the contact level vector with these values
+        match self {
+            Tetromino::Hyphen((x, y)) => vec![(*x, *y), (*x+1, *y), (*x+2, *y), (*x+3, *y)],
+            Tetromino::Plus((x, y)) => vec![(*x, y+2), (*x-1, *y+1), (*x+1, *y+1)],
+            Tetromino::RightAngle((x, y)) => vec![(*x, *y), (*x+1, *y), (*x+2, *y+2)],
+            Tetromino::Pipe((x, y)) => vec![(*x, *y+3)],
+            Tetromino::Square((x, y)) => vec![(*x, y+1), (*x+1, y+1)],
         }
     }
 }
 
-fn check_collision(points: &[(i32, i32)], contact_level: &Vec<i32>) -> Option<i32> {
+fn check_collision(points: &[(i32, i32)], contact_level: &Vec<i32>) -> bool {
     for &(x, y) in points.iter() {
-        if y == contact_level[x as usize] {
-            return Some(x);
+        let contact_value = contact_level[x as usize];
+        if y == contact_value {
+            return true;
         }
     }
-    None
+    false
 }
 
 struct ContactLevel {
@@ -83,28 +93,36 @@ impl ContactLevel {
         *self.level.iter().max().unwrap()
     }
 
-    fn update(&mut self, tetromino: &Tetromino, x: i32) {
-        todo!("update contact level")
+    fn update(&mut self, points_of_contact: &Vec<(i32, i32)>) {
+        for &(x, y) in points_of_contact.iter() {
+            self.level[x as usize] = y;
+        }
     }
 }
 
 
 fn tetris_game(jet_pattern: &Vec<i32>, game_duration: u32) -> i32 {
-    let game_elapsed = 0;
+    let mut game_elapsed = 0;
     let mut height = 0;
     let mut contact_level = ContactLevel::new();
+    let mut jet_stream_iter = jet_pattern.iter().cycle();
     while game_elapsed < game_duration + 1 {
         for i_tetromino in 0..N_TETROMINOS {
             height = contact_level.max() + 4;
             let mut tetromino = spawn_tetromino(i_tetromino, height);
-            for jet_stream in jet_pattern.iter() {
-                tetromino.move_by_jet_stream(*jet_stream);
-                tetromino.move_down();
-                if Some(x) = tetromino.collision_check(&contact_level.level) {
+            loop  {
+                tetromino.move_by_jet_stream(*jet_stream_iter.next().unwrap());
+                if tetromino.collision_check(&contact_level.level) {
                     break;
                 }
+                tetromino.move_down();
             }
+            let points_of_contact = tetromino.new_points_of_contact();
+            contact_level.update(&points_of_contact);
+            println!("asfd");
+            // debug tätä
         }
+        game_elapsed += 1;
     }
     contact_level.max()
 }
@@ -132,4 +150,6 @@ fn main() {
         })
         .collect::<Vec<i32>>();
 
+    let tower_height = tetris_game(&jet_pattern, 2022);
+    println!("Part 1: {}", tower_height);
 }
