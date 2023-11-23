@@ -145,5 +145,6 @@ fn main() {
 
     println!("{:?}", flow_rates);
     println!("{:?}", valve_names);
+    println!("{:?}", distances);
     println!("{}", max_flow_rate);
 }
