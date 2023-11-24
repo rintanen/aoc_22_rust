@@ -31,27 +31,27 @@ impl Tetromino {
         }
     }
 
-    fn collision_check(&self, contact_level: &Vec<i32>) -> bool {
+    fn collision_check(&self, all_blocks: &HashSet<(i32, i32)>) -> bool {
         match self {
             Tetromino::Hyphen((x, y)) => {
                 let points_of_impact = vec![(*x, y-1), (*x+1, y-1), (*x+2, y-1), (*x+3, y-1)];
-                check_collision(&points_of_impact, contact_level)
+                check_collision(&points_of_impact, all_blocks)
             },
             Tetromino::Plus((x, y)) => {
                 let points_of_impact = vec![(*x, y-1), (*x-1, *y), (*x+1, *y)];
-                check_collision(&points_of_impact, contact_level)
+                check_collision(&points_of_impact, all_blocks)
             },
             Tetromino::RightAngle((x, y)) => {
                 let points_of_impact = vec![(*x, *y-1), (*x+1, *y-1), (*x+2, *y-1)];
-                check_collision(&points_of_impact, contact_level)
+                check_collision(&points_of_impact, all_blocks)
             },
             Tetromino::Pipe((x, y)) => {
                 let points_of_impact = vec![(*x, *y-1)];
-                check_collision(&points_of_impact, contact_level)
+                check_collision(&points_of_impact, all_blocks)
             }
             Tetromino::Square((x, y)) => {
                 let points_of_impact = vec![(*x, *y-1), (*x+1, *y-1)];
-                check_collision(&points_of_impact, contact_level)
+                check_collision(&points_of_impact, all_blocks)
             }
         }
     }
@@ -78,10 +78,9 @@ impl Tetromino {
     }
 }
 
-fn check_collision(points: &[(i32, i32)], contact_level: &Vec<i32>) -> bool {
+fn check_collision(points: &[(i32, i32)], all_blocks: &HashSet<(i32, i32)>) -> bool {
     for &(x, y) in points.iter() {
-        let contact_value = contact_level[x as usize];
-        if y == contact_value {
+        if all_blocks.contains(&(x, y)) {
             return true;
         }
     }
@@ -105,7 +104,7 @@ impl ContactLevel {
 
     fn update(&mut self, points_of_contact: &Vec<(i32, i32)>) {
         for &(x, y) in points_of_contact.iter() {
-            self.level[x as usize] = y;
+            self.level[x as usize] = self.level[x as usize].max(y);
         }
     }
 }
@@ -117,6 +116,7 @@ fn tetris_game(jet_pattern: &Vec<i32>, game_duration: u32) -> i32 {
     let mut contact_level = ContactLevel::new();
     let mut jet_stream_iter = jet_pattern.iter().cycle();
     let mut existing_blocks: HashSet<(i32, i32)> = HashSet::new();
+    existing_blocks.extend(vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5,0), (6,0)]); // bottom row
     'game: loop {
         for i_tetromino in 0..N_TETROMINOS {
             height = contact_level.max() + 4;
@@ -126,15 +126,14 @@ fn tetris_game(jet_pattern: &Vec<i32>, game_duration: u32) -> i32 {
                 if !blocked_by_existing_blocks(&tetromino, &existing_blocks, jet_stream) {
                     tetromino.move_by_jet_stream(jet_stream);
                 }
-                if tetromino.collision_check(&contact_level.level) {
+                if tetromino.collision_check(&existing_blocks) {
                     break;
                 }
                 tetromino.move_down();
             }
             let points_of_contact = tetromino.new_points_of_contact();
             contact_level.update(&points_of_contact);
-            tetromino.all_blocks().iter().for_each(|&block| {existing_blocks.insert(block);});
-            // println!("asfd");
+            existing_blocks.extend(tetromino.all_blocks());
             game_elapsed += 1;
             if game_elapsed == game_duration {
                 break 'game;
@@ -164,7 +163,6 @@ fn blocked_by_existing_blocks(tetromino: &Tetromino, existing_blocks: &HashSet<(
     }
     false
 }
-
 
 fn main() {
     let input = include_str!("../../inputs/day17.in");
