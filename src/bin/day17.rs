@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use std::collections::HashSet;
 
 #[derive(Debug)]
 enum Tetromino {
@@ -11,7 +11,7 @@ enum Tetromino {
 const N_TETROMINOS: usize = 5;
 
 impl Tetromino {
-    fn move_by_jet_stream(&mut self, jet_stream: i32) {
+    fn move_by_jet_stream(&mut self, jet_stream: &i32) {
         match self {
             Tetromino::Hyphen((x, _)) => *x = (*x + jet_stream).max(0).min(3),
             Tetromino::Plus((x, _)) => *x = (*x + jet_stream).max(1).min(5),
@@ -63,7 +63,17 @@ impl Tetromino {
             Tetromino::Plus((x, y)) => vec![(*x, y+2), (*x-1, *y+1), (*x+1, *y+1)],
             Tetromino::RightAngle((x, y)) => vec![(*x, *y), (*x+1, *y), (*x+2, *y+2)],
             Tetromino::Pipe((x, y)) => vec![(*x, *y+3)],
-            Tetromino::Square((x, y)) => vec![(*x, y+1), (*x+1, y+1)],
+            Tetromino::Square((x, y)) => vec![(*x, *y+1), (*x+1, *y+1)],
+        }
+    }
+
+    fn all_blocks(&self) -> Vec<(i32, i32)> {
+        match self {
+            Tetromino::Hyphen((x, y)) => vec![(*x, *y), (*x+1, *y), (*x+2, *y), (*x+3, *y)],
+            Tetromino::Plus((x, y)) => vec![(*x, *y), (*x-1, *y+1), (*x+1, *y+1), (*x, *y+1), (*x, *y+2)],
+            Tetromino::RightAngle((x, y)) => vec![(*x, *y), (*x+1, *y), (*x+2, *y), (*x+2, *y+1), (*x+2, *y+2)],
+            Tetromino::Pipe((x, y)) => vec![(*x, *y), (*x, *y+1), (*x, *y+2), (*x, *y+3)],
+            Tetromino::Square((x, y)) => vec![(*x, *y), (*x+1, *y), (*x, *y+1), (*x+1, *y+1)],
         }
     }
 }
@@ -103,15 +113,19 @@ impl ContactLevel {
 
 fn tetris_game(jet_pattern: &Vec<i32>, game_duration: u32) -> i32 {
     let mut game_elapsed = 0;
-    let mut height = 0;
+    let mut height: i32;
     let mut contact_level = ContactLevel::new();
     let mut jet_stream_iter = jet_pattern.iter().cycle();
-    while game_elapsed < game_duration + 1 {
+    let mut existing_blocks: HashSet<(i32, i32)> = HashSet::new();
+    'game: loop {
         for i_tetromino in 0..N_TETROMINOS {
             height = contact_level.max() + 4;
             let mut tetromino = spawn_tetromino(i_tetromino, height);
             loop  {
-                tetromino.move_by_jet_stream(*jet_stream_iter.next().unwrap());
+                let jet_stream = jet_stream_iter.next().unwrap();
+                if !blocked_by_existing_blocks(&tetromino, &existing_blocks, jet_stream) {
+                    tetromino.move_by_jet_stream(jet_stream);
+                }
                 if tetromino.collision_check(&contact_level.level) {
                     break;
                 }
@@ -119,10 +133,13 @@ fn tetris_game(jet_pattern: &Vec<i32>, game_duration: u32) -> i32 {
             }
             let points_of_contact = tetromino.new_points_of_contact();
             contact_level.update(&points_of_contact);
-            println!("asfd");
-            // debug tätä
+            tetromino.all_blocks().iter().for_each(|&block| {existing_blocks.insert(block);});
+            // println!("asfd");
+            game_elapsed += 1;
+            if game_elapsed == game_duration {
+                break 'game;
+            }
         }
-        game_elapsed += 1;
     }
     contact_level.max()
 }
@@ -136,6 +153,16 @@ fn spawn_tetromino(i_tetromino: usize, height: i32) -> Tetromino {
         4 => Tetromino::Square((2, height)),
         _ => panic!("???")
     }
+}
+
+fn blocked_by_existing_blocks(tetromino: &Tetromino, existing_blocks: &HashSet<(i32, i32)>, jet_stream: &i32) -> bool {
+    let all_blocks = tetromino.all_blocks();
+    for &(x, y) in all_blocks.iter() {
+        if existing_blocks.contains(&(x+jet_stream, y)) {
+            return true;
+        }
+    }
+    false
 }
 
 
