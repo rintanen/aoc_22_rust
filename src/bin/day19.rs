@@ -91,6 +91,13 @@ struct State {
 }
 
 impl State {
+    fn new() -> Self {
+        Self {
+            ore_robots: 1,
+            ..Default::default()
+        }
+    }
+
     fn collect_minerals(&mut self) {
         self.ore += self.ore_robots;
         self.clay += self.clay_robots;
