@@ -1,5 +1,5 @@
 use std::str::FromStr;
-
+use std::collections::{HashSet, VecDeque};
 use itertools::Itertools;
 
 #[derive(Debug)]
@@ -98,51 +98,96 @@ impl State {
         }
     }
 
-    fn collect_minerals(&mut self) {
-        self.ore += self.ore_robots;
-        self.clay += self.clay_robots;
-        self.obsidian += self.obsidian_robots;
-        self.geode += self.geode_robots;
+    fn collect_minerals(self) -> State {
+        State {
+            ore: (self.ore + self.ore_robots).min(3*4),
+            clay: (self.clay + self.clay_robots).min(3*14),
+            obsidian: (self.obsidian + self.obsidian_robots).min(3*12),
+            geode: self.geode + self.geode_robots,
+            ..self
+        }
     }
 
-    fn try_build_ore_robot(&mut self, blueprint: &Blueprint) -> Option<self> {
-        if self.ore >= blueprint.ore_robot_cost {
-            self.ore -= blueprint.ore_robot_cost;
-            self.ore_robots += 1;
-            Some(*self)
+    fn try_build_ore_robot(&self, blueprint: &Blueprint) -> Option<State> {
+        if self.ore_robots < 4 && self.ore >= blueprint.ore_robot_cost {
+            let mut new_state = self.collect_minerals();
+            new_state.ore -= blueprint.ore_robot_cost;
+            new_state.ore_robots += 1;
+            return Some(new_state);
         }
         None
     }
 
-    fn try_build_clay_robot(&mut self, blueprint: &Blueprint) -> Option<self> {
-        if self.ore >= blueprint.clay_robot_cost {
-            self.ore -= blueprint.clay_robot_cost;
-            self.clay_robots += 1;
-            Some(*self)
+    fn try_build_clay_robot(&self, blueprint: &Blueprint) -> Option<State> {
+        if self.clay_robots < 14 && self.ore >= blueprint.clay_robot_cost {
+            let mut new_state = self.collect_minerals();
+            new_state.ore -= blueprint.clay_robot_cost;
+            new_state.clay_robots += 1;
+            return Some(new_state);
         }
         None
     }
 
-    fn try_build_obsidian_robot(&mut self, blueprint: &Blueprint) -> Option<self> {
-        if self.ore >= blueprint.obsidian_robot_cost.ore && self.clay >= blueprint.obsidian_robot_cost.clay {
-            self.ore -= blueprint.obsidian_robot_cost.ore;
-            self.clay -= blueprint.obsidian_robot_cost.clay;
-            self.obsidian_robots += 1;
-            Some(*self)
+    fn try_build_obsidian_robot(&self, blueprint: &Blueprint) -> Option<State> {
+        if self.obsidian_robots < blueprint.geode_robot_cost.obsidian && self.ore >= blueprint.obsidian_robot_cost.ore && self.clay >= blueprint.obsidian_robot_cost.clay {
+            let mut new_state = self.collect_minerals();
+            new_state.ore -= blueprint.obsidian_robot_cost.ore;
+            new_state.clay -= blueprint.obsidian_robot_cost.clay;
+            new_state.obsidian_robots += 1;
+            return Some(new_state);
         }
         None
     }
 
-    fn try_build_geode_robot(&mut self, blueprint: &Blueprint) -> Option<self> {
+    fn try_build_geode_robot(&self, blueprint: &Blueprint) -> Option<State> {
         if self.ore >= blueprint.geode_robot_cost.ore && self.obsidian >= blueprint.geode_robot_cost.obsidian {
-            self.ore -= blueprint.geode_robot_cost.ore;
-            self.obsidian -= blueprint.geode_robot_cost.obsidian;
-            self.geode_robots += 1;
-            Some(*self)
+            let mut new_state = self.collect_minerals();
+            new_state.ore -= blueprint.geode_robot_cost.ore;
+            new_state.obsidian -= blueprint.geode_robot_cost.obsidian;
+            new_state.geode_robots += 1;
+            return Some(new_state);
         }
         None
     }
 }
+
+
+fn create_state_tree(blueprint: &Blueprint, time: u16) -> Vec<State> {
+    let mut states = vec![State::new()];
+    let mut seen = HashSet::new();
+    let mut most_geodes = 0;
+    while let Some(time_left) =  time.checked_sub(1) {
+        let mut next_states = vec![];
+        for state in states {
+            if !seen.insert(state.clone()) {
+                continue;
+            }
+            if state.geode + state.geode_robots * 2 * (time - time_left - 1) < most_geodes {
+                continue
+            }
+            if let Some(new_state) = state.try_build_geode_robot(blueprint) {
+                next_states.push(new_state);
+                continue;
+            }
+            if let Some(new_state) = state.try_build_obsidian_robot(blueprint) {
+                next_states.push(new_state);
+                continue;
+            }
+            if let Some(new_state) = state.try_build_ore_robot(blueprint) {
+                next_states.push(new_state);
+                continue;
+            }
+            if let Some(new_state) = state.try_build_clay_robot(blueprint) {
+                next_states.push(new_state);
+                continue;
+            }
+            next_states.push(state.collect_minerals());
+        }
+        states = next_states;
+    }
+    states
+}
+
 
 fn main() {
     let input = include_str!("../../inputs/day19.in");
@@ -150,5 +195,7 @@ fn main() {
         .split("\n\n")
         .map(|blueprint| blueprint.parse::<Blueprint>().unwrap())
         .collect::<Vec<Blueprint>>();
-    dbg!(blueprints);
+    // dbg!(&blueprints);
+    let state_tree = create_state_tree(&blueprints[0], 24);
+    println!("{:?}", state_tree.len());
 }
