@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use itertools::Itertools;
 
 #[derive(Debug)]
@@ -129,7 +129,10 @@ impl State {
     }
 
     fn try_build_obsidian_robot(&self, blueprint: &Blueprint) -> Option<State> {
-        if self.obsidian_robots < blueprint.geode_robot_cost.obsidian && self.ore >= blueprint.obsidian_robot_cost.ore && self.clay >= blueprint.obsidian_robot_cost.clay {
+        if self.obsidian_robots < blueprint.geode_robot_cost.obsidian
+            && self.ore >= blueprint.obsidian_robot_cost.ore
+            && self.clay >= blueprint.obsidian_robot_cost.clay
+        {
             let mut new_state = self.collect_minerals();
             new_state.ore -= blueprint.obsidian_robot_cost.ore;
             new_state.clay -= blueprint.obsidian_robot_cost.clay;
@@ -140,7 +143,9 @@ impl State {
     }
 
     fn try_build_geode_robot(&self, blueprint: &Blueprint) -> Option<State> {
-        if self.ore >= blueprint.geode_robot_cost.ore && self.obsidian >= blueprint.geode_robot_cost.obsidian {
+        if self.ore >= blueprint.geode_robot_cost.ore
+            && self.obsidian >= blueprint.geode_robot_cost.obsidian
+        {
             let mut new_state = self.collect_minerals();
             new_state.ore -= blueprint.geode_robot_cost.ore;
             new_state.obsidian -= blueprint.geode_robot_cost.obsidian;
@@ -156,15 +161,18 @@ fn create_state_tree(blueprint: &Blueprint, time: u16) -> Vec<State> {
     let mut states = vec![State::new()];
     let mut seen = HashSet::new();
     let mut most_geodes = 0;
-    while let Some(time_left) =  time.checked_sub(1) {
+    let mut i = 0;
+    for t in 0..time {
         let mut next_states = vec![];
+        let time_left = time - t - 1;
         for state in states {
-            if !seen.insert(state.clone()) {
+            if !seen.insert(state) {
                 continue;
             }
-            if state.geode + state.geode_robots * 2 * (time - time_left - 1) < most_geodes {
+            if state.geode + state.geode_robots * 2 * time_left < most_geodes {
                 continue
             }
+            most_geodes = most_geodes.max(state.geode);
             if let Some(new_state) = state.try_build_geode_robot(blueprint) {
                 next_states.push(new_state);
                 continue;
@@ -182,8 +190,10 @@ fn create_state_tree(blueprint: &Blueprint, time: u16) -> Vec<State> {
                 continue;
             }
             next_states.push(state.collect_minerals());
+            i = i + 1;
         }
         states = next_states;
+        let db = 1;
     }
     states
 }
@@ -195,7 +205,8 @@ fn main() {
         .split("\n\n")
         .map(|blueprint| blueprint.parse::<Blueprint>().unwrap())
         .collect::<Vec<Blueprint>>();
-    // dbg!(&blueprints);
+    dbg!(&blueprints[0]);
     let state_tree = create_state_tree(&blueprints[0], 24);
-    println!("{:?}", state_tree.len());
+    println!("len state tree {:?}", state_tree.len());
+    print!("max geodes: {:?}", state_tree.iter().map(|state| state.geode).max());
 }
